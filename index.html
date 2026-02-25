@@ -380,14 +380,10 @@ function update(defocusNm) {
     let maxV = 0;
     for (let i = 0; i < N * N; i++) maxV = Math.max(maxV, objV[i]);
     drawProfile(objPCtx, objV, N / 2, '#1a8a5a', [0, maxV * 1.1], false);
-    // Image profile: extract the contrast signal
+    // Image profile: fixed Y-axis for cross-defocus comparison
     const imgLine = new Float64Array(N * N);
     for (let i = 0; i < N * N; i++) imgLine[i] = imgRe[i] * displayGain / 150;
-    let imgMax = 0;
-    const row = N / 2;
-    for (let x = 0; x < N; x++) imgMax = Math.max(imgMax, Math.abs(imgLine[row * N + x]));
-    imgMax = Math.max(imgMax, 0.05);
-    drawProfile(imgPCtx, imgLine, N / 2, '#1a8a8a', [-imgMax * 1.2, imgMax * 1.2], true);
+    drawProfile(imgPCtx, imgLine, N / 2, '#1a8a8a', [-0.8, 0.8], true);
     drawCTF(defocusNm);
     updateInfo(defocusNm);
 }
