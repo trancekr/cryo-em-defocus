@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Cryo-EM Defocus Contrast Simulation</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #b8c8d8; font-family: Arial, sans-serif; display: flex; justify-content: center; padding: 20px; }
+#container { background: #d0dce8; border-radius: 8px; padding: 20px; max-width: 960px; width: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+h2 { text-align: center; font-size: 18px; margin-bottom: 16px; color: #222; }
+#main-row { display: flex; gap: 12px; margin-bottom: 12px; }
+.panel { background: #fff; border: 1px solid #aaa; border-radius: 4px; overflow: hidden; }
+.panel-label { text-align: center; font-size: 13px; font-style: italic; color: #444; padding: 4px 0 2px; background: #eef2f6; }
+#object-panel, #image-panel { width: 280px; flex-shrink: 0; }
+#object-panel canvas, #image-panel canvas { display: block; width: 280px; height: 280px; image-rendering: auto; }
+#defocus-label { text-align: center; font-size: 13px; padding: 4px 0; color: #333; background: #eef2f6; }
+#info-panel { flex: 1; padding: 16px; font-size: 14px; line-height: 1.6; color: #333; display: flex; align-items: center; }
+#info-panel ul { padding-left: 18px; }
+#info-panel li { margin-bottom: 8px; }
+#profile-row { display: flex; gap: 12px; margin-bottom: 14px; }
+#profile-row .panel { flex: 1; padding: 4px; }
+#profile-row canvas { display: block; width: 100%; height: 120px; }
+.axis-label { text-align: center; font-size: 11px; color: #555; }
+#ctf-row { margin-bottom: 14px; }
+#ctf-row .panel { padding: 4px; }
+#ctf-row canvas { display: block; width: 100%; height: 90px; }
+#controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+#defocus-slider { flex: 1; min-width: 200px; height: 6px; }
+#play-btn { padding: 6px 16px; border: 1px solid #888; border-radius: 4px; background: #eee; cursor: pointer; font-size: 14px; }
+#play-btn:hover { background: #ddd; }
+.preset-btn { padding: 4px 10px; border: 1px solid #999; border-radius: 3px; background: #f0f0f0; cursor: pointer; font-size: 11px; }
+.preset-btn:hover { background: #d8d8d8; }
+#slider-label { font-size: 13px; color: #333; min-width: 120px; text-align: right; }
+</style>
+</head>
+<body>
+<div id="container">
+  <h2>Most cryo-EM data are acquired using defocus contrast</h2>
+  <div id="main-row">
+    <div id="object-panel" class="panel">
+      <div class="panel-label">object</div>
+      <canvas id="objCanvas" width="256" height="256"></canvas>
+    </div>
+    <div id="image-panel" class="panel">
+      <div class="panel-label">image</div>
+      <canvas id="imgCanvas" width="256" height="256"></canvas>
+      <div id="defocus-label">defocus: 0.000μm</div>
+    </div>
+    <div id="info-panel" class="panel">
+      <div id="info-text">
+        In focus, the image of a cryo-EM object is very weak.
+      </div>
+    </div>
+  </div>
+  <div id="profile-row">
+    <div class="panel">
+      <canvas id="objProfile" width="600" height="120"></canvas>
+      <div class="axis-label">X coordinate, Å</div>
+    </div>
+    <div class="panel">
+      <canvas id="imgProfile" width="600" height="120"></canvas>
+      <div class="axis-label">X coordinate, Å</div>
+    </div>
+  </div>
+  <div id="ctf-row">
+    <div class="panel">
+      <canvas id="ctfCanvas" width="900" height="90"></canvas>
+      <div class="axis-label">CTF vs spatial frequency (Å⁻¹)</div>
+    </div>
+  </div>
+  <div id="controls">
+    <button id="play-btn" onclick="togglePlay()">▶ Play</button>
+    <input type="range" id="defocus-slider" min="-200" max="3000" step="1" value="0" oninput="onSlider()">
+    <span id="slider-label">0.000 μm</span>
+    <button class="preset-btn" onclick="setDefocus(0)">In focus</button>
+    <button class="preset-btn" onclick="setDefocus(88)">Scherzer</button>
+    <button class="preset-btn" onclick="setDefocus(500)">0.5 μm</button>
+    <button class="preset-btn" onclick="setDefocus(1000)">1.0 μm</button>
+    <button class="preset-btn" onclick="setDefocus(2000)">2.0 μm</button>
+    <button class="preset-btn" onclick="setDefocus(3000)">3.0 μm</button>
+  </div>
+</div>
+
+<script>
+// === Physics constants (300 kV electron microscope) ===
+const N = 256;
+const pixelSize = 1.0;          // Å per pixel
+const lambda = 0.01969;          // Å (300 kV electrons)
+const Cs = 2.7e7;               // Å (2.7 mm spherical aberration)
+const Bfactor = 60;             // Å² (envelope damping)
+const displayGain = 500;        // display contrast multiplier (auto-scaled)
+
+// === FFT implementation (Cooley-Tukey radix-2) ===
+function fft1d(re, im, invert) {
+    const n = re.length;
+    for (let i = 1, j = 0; i < n; i++) {
+        let bit = n >> 1;
+        for (; j & bit; bit >>= 1) j ^= bit;
+        j ^= bit;
+        if (i < j) {
+            let t = re[i]; re[i] = re[j]; re[j] = t;
+            t = im[i]; im[i] = im[j]; im[j] = t;
+        }
+    }
+    for (let len = 2; len <= n; len <<= 1) {
+        const ang = 2 * Math.PI / len * (invert ? -1 : 1);
+        const wR = Math.cos(ang), wI = Math.sin(ang);
+        for (let i = 0; i < n; i += len) {
+            let cR = 1, cI = 0;
+            for (let j = 0; j < len / 2; j++) {
+                const a = i + j, b = a + len / 2;
+                const tR = re[b] * cR - im[b] * cI;
+                const tI = re[b] * cI + im[b] * cR;
+                re[b] = re[a] - tR; im[b] = im[a] - tI;
+                re[a] += tR; im[a] += tI;
+                const nc = cR * wR - cI * wI;
+                cI = cR * wI + cI * wR; cR = nc;
+            }
+        }
+    }
+    if (invert) {
+        for (let i = 0; i < n; i++) { re[i] /= n; im[i] /= n; }
+    }
+}
+
+function fft2d(re, im, invert) {
+    const rowR = new Float64Array(N), rowI = new Float64Array(N);
+    // rows
+    for (let y = 0; y < N; y++) {
+        const off = y * N;
+        for (let x = 0; x < N; x++) { rowR[x] = re[off + x]; rowI[x] = im[off + x]; }
+        fft1d(rowR, rowI, invert);
+        for (let x = 0; x < N; x++) { re[off + x] = rowR[x]; im[off + x] = rowI[x]; }
+    }
+    const colR = new Float64Array(N), colI = new Float64Array(N);
+    // columns
+    for (let x = 0; x < N; x++) {
+        for (let y = 0; y < N; y++) { colR[y] = re[y * N + x]; colI[y] = im[y * N + x]; }
+        fft1d(colR, colI, invert);
+        for (let y = 0; y < N; y++) { re[y * N + x] = colR[y]; im[y * N + x] = colI[y]; }
+    }
+}
+
+// === Create protein-like object ===
+function createObject() {
+    const V = new Float64Array(N * N);
+    const cx = N / 2, cy = N / 2;
+    function addGauss(x0, y0, sx, sy, amp, angle) {
+        const ca = Math.cos(angle), sa = Math.sin(angle);
+        const r = Math.ceil(Math.max(sx, sy) * 4);
+        for (let dy = -r; dy <= r; dy++) {
+            for (let dx = -r; dx <= r; dx++) {
+                const px = Math.round(x0) + dx, py = Math.round(y0) + dy;
+                if (px < 0 || px >= N || py < 0 || py >= N) continue;
+                const rx = dx * ca + dy * sa, ry = -dx * sa + dy * ca;
+                V[py * N + px] += amp * Math.exp(-0.5 * (rx * rx / (sx * sx) + ry * ry / (sy * sy)));
+            }
+        }
+    }
+    // Main envelope
+    addGauss(cx, cy, 18, 24, 0.22, 0);
+    // Dense core regions (like subunits)
+    addGauss(cx - 9, cy - 8, 5, 5, 0.45, 0);
+    addGauss(cx + 9, cy - 8, 5, 5, 0.45, 0);
+    addGauss(cx, cy + 6, 6, 5, 0.38, 0);
+    // Helix-like elongated features
+    addGauss(cx - 14, cy + 2, 3, 10, 0.40, 0.35);
+    addGauss(cx + 14, cy + 2, 3, 10, 0.40, -0.35);
+    addGauss(cx, cy - 18, 9, 3, 0.30, 0);
+    // Beta-sheet like feature at bottom
+    addGauss(cx - 6, cy + 18, 8, 3, 0.25, 0.1);
+    addGauss(cx + 6, cy + 18, 8, 3, 0.25, -0.1);
+    // Small high-frequency features
+    addGauss(cx - 4, cy - 16, 2, 2, 0.30, 0);
+    addGauss(cx + 4, cy - 16, 2, 2, 0.30, 0);
+    addGauss(cx - 7, cy + 12, 2.5, 2, 0.28, 0);
+    addGauss(cx + 7, cy + 12, 2.5, 2, 0.28, 0);
+    addGauss(cx, cy - 4, 3, 3, 0.32, 0);
+    // Cavity / channel
+    addGauss(cx, cy - 1, 4, 4, -0.12, 0);
+    return V;
+}
+
+// === Compute spatial frequency for FFT index ===
+function freqAt(k) {
+    return (k <= N / 2 ? k : k - N) / (N * pixelSize);
+}
+
+// === Compute CTF at given spatial frequency and defocus ===
+function ctfValue(s2, defocusA) {
+    // chi = pi * lambda * s^2 * (defocus - 0.5 * Cs * lambda^2 * s^2)
+    const chi = Math.PI * (defocusA * lambda * s2 - 0.5 * Cs * lambda * lambda * lambda * s2 * s2);
+    const env = Math.exp(-Bfactor * s2 / 4);
+    return -Math.sin(chi) * env;
+}
+
+// === Pre-compute object FFT ===
+const objV = createObject();
+const objRe = new Float64Array(N * N);
+const objIm = new Float64Array(N * N);
+objRe.set(objV);
+objIm.fill(0);
+fft2d(objRe, objIm, false);
+// Save a copy of the object FFT
+const objFTRe = new Float64Array(objRe);
+const objFTIm = new Float64Array(objIm);
+
+// === Compute image at given defocus (nm -> Å) ===
+const imgRe = new Float64Array(N * N);
+const imgIm = new Float64Array(N * N);
+
+function computeImage(defocusNm) {
+    const defocusA = defocusNm * 10000; // nm*1000->μm, but input is nm... actually let's use μm*10000=Å
+    // defocusNm is actually in nm; convert: defocus in Å = defocusNm * 10
+    // Wait, the slider gives values in nm (0-3000 nm = 0-3 μm)
+    // Actually let's redefine: the slider gives "nm" directly
+    // 1 μm = 10000 Å, so if slider value represents nm: defocusA = defocusNm * 10
+    // Hmm let me simplify. Slider value is in nm. 1 nm = 10 Å.
+    const dA = defocusNm * 10; // convert nm to Å
+
+    for (let ky = 0; ky < N; ky++) {
+        const sy = freqAt(ky);
+        for (let kx = 0; kx < N; kx++) {
+            const sx = freqAt(kx);
+            const s2 = sx * sx + sy * sy;
+            const ctf = ctfValue(s2, dA);
+            const idx = ky * N + kx;
+            // Image FT = Object FT * CTF (for phase contrast imaging)
+            imgRe[idx] = objFTRe[idx] * ctf;
+            imgIm[idx] = objFTIm[idx] * ctf;
+        }
+    }
+    fft2d(imgRe, imgIm, true); // inverse FFT
+}
+
+// === Drawing functions ===
+const objCtx = document.getElementById('objCanvas').getContext('2d');
+const imgCtx = document.getElementById('imgCanvas').getContext('2d');
+const objPCtx = document.getElementById('objProfile').getContext('2d');
+const imgPCtx = document.getElementById('imgProfile').getContext('2d');
+const ctfCtx = document.getElementById('ctfCanvas').getContext('2d');
+
+function drawObject() {
+    const id = objCtx.createImageData(N, N);
+    let maxV = 0;
+    for (let i = 0; i < N * N; i++) maxV = Math.max(maxV, Math.abs(objV[i]));
+    for (let i = 0; i < N * N; i++) {
+        const v = Math.max(0, Math.min(255, (objV[i] / maxV) * 255));
+        const p = i * 4;
+        id.data[p] = v; id.data[p + 1] = v; id.data[p + 2] = v; id.data[p + 3] = 255;
+    }
+    objCtx.putImageData(id, 0, 0);
+    // Blue line at middle
+    objCtx.strokeStyle = 'rgba(80,140,220,0.6)';
+    objCtx.lineWidth = 1;
+    objCtx.beginPath(); objCtx.moveTo(0, N / 2); objCtx.lineTo(N, N / 2); objCtx.stroke();
+}
+
+function drawImage(defocusNm) {
+    const id = imgCtx.createImageData(N, N);
+    for (let i = 0; i < N * N; i++) {
+        const contrast = imgRe[i] * displayGain;
+        const v = Math.max(0, Math.min(255, 150 + contrast));
+        const p = i * 4;
+        id.data[p] = v; id.data[p + 1] = v; id.data[p + 2] = v; id.data[p + 3] = 255;
+    }
+    imgCtx.putImageData(id, 0, 0);
+    // Blue line
+    imgCtx.strokeStyle = 'rgba(80,140,220,0.6)';
+    imgCtx.lineWidth = 1;
+    imgCtx.beginPath(); imgCtx.moveTo(0, N / 2); imgCtx.lineTo(N, N / 2); imgCtx.stroke();
+    // Defocus label
+    const um = defocusNm / 1000;
+    let label = `defocus: ${um.toFixed(3)}μm`;
+    if (Math.abs(um) < 0.001) label += '';
+    else if (Math.abs(um - 0.088) < 0.005) label += ' (Scherzer)';
+    else if (um > 0.01) label += ' under';
+    else if (um < -0.01) label += ' over';
+    document.getElementById('defocus-label').textContent = label;
+}
+
+function drawProfile(ctx, data, yMid, color, yRange, isImage) {
+    const canvas = ctx.canvas;
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, w, h);
+    // Axes
+    const margin = { l: 50, r: 10, t: 10, b: 25 };
+    const pw = w - margin.l - margin.r, ph = h - margin.t - margin.b;
+    ctx.strokeStyle = '#999';
+    ctx.lineWidth = 0.5;
+    // Horizontal axis
+    ctx.beginPath(); ctx.moveTo(margin.l, margin.t + ph / 2); ctx.lineTo(margin.l + pw, margin.t + ph / 2); ctx.stroke();
+    // Vertical axis
+    ctx.beginPath(); ctx.moveTo(margin.l + pw / 2, margin.t); ctx.lineTo(margin.l + pw / 2, margin.t + ph); ctx.stroke();
+    // Labels
+    ctx.fillStyle = '#666'; ctx.font = '9px Arial';
+    ctx.fillText(`-${N / 2}`, margin.l - 5, margin.t + ph + 14);
+    ctx.fillText('0', margin.l + pw / 2 - 3, margin.t + ph + 14);
+    ctx.fillText(`${N / 2}`, margin.l + pw - 15, margin.t + ph + 14);
+    // Y range labels
+    ctx.fillText(yRange[1].toFixed(1), margin.l - 25, margin.t + 10);
+    ctx.fillText(yRange[0].toFixed(1), margin.l - 25, margin.t + ph);
+    // Data line
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    for (let i = 0; i < N; i++) {
+        const val = data[yMid * N + i];
+        const x = margin.l + (i / N) * pw;
+        const normalized = (val - yRange[0]) / (yRange[1] - yRange[0]);
+        const y = margin.t + ph - normalized * ph;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+}
+
+function drawCTF(defocusNm) {
+    const canvas = ctfCtx.canvas;
+    const w = canvas.width, h = canvas.height;
+    const dA = defocusNm * 10;
+    ctfCtx.clearRect(0, 0, w, h);
+    ctfCtx.fillStyle = '#fff';
+    ctfCtx.fillRect(0, 0, w, h);
+    const margin = { l: 40, r: 10, t: 8, b: 18 };
+    const pw = w - margin.l - margin.r, ph = h - margin.t - margin.b;
+    // Zero line
+    ctfCtx.strokeStyle = '#ccc'; ctfCtx.lineWidth = 0.5;
+    ctfCtx.beginPath(); ctfCtx.moveTo(margin.l, margin.t + ph / 2); ctfCtx.lineTo(margin.l + pw, margin.t + ph / 2); ctfCtx.stroke();
+    // CTF curve
+    const sMax = 0.35; // Å⁻¹
+    ctfCtx.strokeStyle = '#2266aa'; ctfCtx.lineWidth = 1.5;
+    ctfCtx.beginPath();
+    for (let i = 0; i <= pw; i++) {
+        const s = (i / pw) * sMax;
+        const s2 = s * s;
+        const ctf = ctfValue(s2, dA);
+        const x = margin.l + i;
+        const y = margin.t + ph / 2 - ctf * (ph / 2) * 0.9;
+        if (i === 0) ctfCtx.moveTo(x, y); else ctfCtx.lineTo(x, y);
+    }
+    ctfCtx.stroke();
+    // Labels
+    ctfCtx.fillStyle = '#666'; ctfCtx.font = '9px Arial';
+    ctfCtx.fillText('0', margin.l - 8, margin.t + ph / 2 + 3);
+    ctfCtx.fillText('1', margin.l - 10, margin.t + 8);
+    ctfCtx.fillText('-1', margin.l - 14, margin.t + ph);
+    ctfCtx.fillText('0', margin.l - 2, margin.t + ph + 14);
+    ctfCtx.fillText(sMax.toFixed(2), margin.l + pw - 15, margin.t + ph + 14);
+    ctfCtx.fillText('CTF', margin.l + 4, margin.t + 14);
+}
+
+// === Info text ===
+function updateInfo(defocusNm) {
+    const um = defocusNm / 1000;
+    const el = document.getElementById('info-text');
+    if (Math.abs(um) < 0.01) {
+        el.innerHTML = 'In focus, the image of a cryo-EM object is very weak. Biological specimens are nearly transparent to electrons (weak phase objects), producing almost no amplitude contrast.';
+    } else if (Math.abs(um - 0.088) < 0.015) {
+        el.innerHTML = 'The <b>Scherzer defocus</b> value, commonly used in materials science, preserves high-resolution information but still yields low contrast. It optimizes the CTF passband before the first zero crossing.';
+    } else if (um > 0 && um < 0.3) {
+        el.innerHTML = 'At small underfocus, contrast begins to build as the CTF departs from zero. However, the overall signal remains weak for cryo-EM biological specimens.';
+    } else if (um >= 0.3 && um < 1.0) {
+        el.innerHTML = '<ul><li>Moderate underfocus provides usable contrast for particle picking and alignment.</li><li>Low-resolution features become clearly visible.</li><li>Some high-resolution information begins to show delocalization.</li></ul>';
+    } else if (um >= 1.0 && um < 2.0) {
+        el.innerHTML = '<ul><li>At high defocus, high-resolution information in the image is strongly <b>delocalized</b>.</li><li>Image processing can re-localize the signals, but at most only about half of the theoretical contrast is preserved by defocusing.</li><li>"Underfocus" means decreasing the strength of the objective lens, effectively focusing above the specimen.</li></ul>';
+    } else if (um >= 2.0) {
+        el.innerHTML = '<ul><li>Extreme underfocus produces very strong Fresnel fringes and delocalization.</li><li>While contrast is high, positional accuracy of features is severely degraded.</li><li>The CTF oscillates rapidly, causing extensive mixing of spatial frequency information.</li></ul>';
+    } else {
+        el.innerHTML = 'Overfocus: the objective lens is too strong, focusing below the specimen. The CTF behavior is similar to underfocus but with inverted phase for some frequencies.';
+    }
+}
+
+// === Main update ===
+function update(defocusNm) {
+    computeImage(defocusNm);
+    drawImage(defocusNm);
+    // Object profile
+    let maxV = 0;
+    for (let i = 0; i < N * N; i++) maxV = Math.max(maxV, objV[i]);
+    drawProfile(objPCtx, objV, N / 2, '#1a8a5a', [0, maxV * 1.1], false);
+    // Image profile: extract the contrast signal
+    const imgLine = new Float64Array(N * N);
+    for (let i = 0; i < N * N; i++) imgLine[i] = imgRe[i] * displayGain / 150;
+    let imgMax = 0;
+    const row = N / 2;
+    for (let x = 0; x < N; x++) imgMax = Math.max(imgMax, Math.abs(imgLine[row * N + x]));
+    imgMax = Math.max(imgMax, 0.05);
+    drawProfile(imgPCtx, imgLine, N / 2, '#1a8a8a', [-imgMax * 1.2, imgMax * 1.2], true);
+    drawCTF(defocusNm);
+    updateInfo(defocusNm);
+}
+
+// === Controls ===
+let playing = false;
+let animId = null;
+let currentDefocusNm = 0;
+
+function onSlider() {
+    currentDefocusNm = parseFloat(document.getElementById('defocus-slider').value);
+    document.getElementById('slider-label').textContent = (currentDefocusNm / 1000).toFixed(3) + ' μm';
+    update(currentDefocusNm);
+}
+
+function setDefocus(nm) {
+    currentDefocusNm = nm;
+    document.getElementById('defocus-slider').value = nm;
+    document.getElementById('slider-label').textContent = (nm / 1000).toFixed(3) + ' μm';
+    update(nm);
+}
+
+function togglePlay() {
+    playing = !playing;
+    document.getElementById('play-btn').textContent = playing ? '⏸ Pause' : '▶ Play';
+    if (playing) animate();
+    else if (animId) { cancelAnimationFrame(animId); animId = null; }
+}
+
+function animate() {
+    if (!playing) return;
+    currentDefocusNm += 3;
+    if (currentDefocusNm > 3000) currentDefocusNm = -200;
+    document.getElementById('defocus-slider').value = currentDefocusNm;
+    document.getElementById('slider-label').textContent = (currentDefocusNm / 1000).toFixed(3) + ' μm';
+    update(currentDefocusNm);
+    animId = requestAnimationFrame(animate);
+}
+
+// === Initialize ===
+drawObject();
+update(0);
+</script>
+</body>
+</html>
