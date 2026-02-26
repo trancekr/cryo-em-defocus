@@ -182,7 +182,7 @@ function drawRay(canvasId, state) {
     const labelX  = cx + planeW / 2 + 10;
 
     // Image plane positions
-    const imgPlaneMap = { over: detY - h * 0.20, focus: detY, under: detY + h * 0.20 };
+    const imgPlaneMap = { over: detY - h * 0.20, focus: detY, under: detY + h * 0.28 };
     const imgPlaneY = imgPlaneMap[state];
 
     const isInFocus = state === 'focus';
@@ -385,7 +385,7 @@ function drawRay(canvasId, state) {
         ctx.moveTo(cx - planeW * 0.42, imgPlaneY);
         ctx.lineTo(cx + planeW * 0.42, imgPlaneY);
         ctx.stroke(); ctx.setLineDash([]);
-        labelBg('Image Plane', labelX, imgPlaneY + fSM * 1.3,
+        labelBg('Image Plane', labelX, imgPlaneY + fSM * 0.35,
             `800 ${fSM}px Inter,sans-serif`, stateColor);
     }
 
