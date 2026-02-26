@@ -74,7 +74,7 @@ body {
   background: #fafafe;
 }
 .bottom-bar canvas {
-  width: clamp(80px, 10vh, 140px); height: clamp(80px, 10vh, 140px);
+  width: clamp(120px, 16vh, 200px); height: clamp(120px, 16vh, 200px);
   border-radius: 8px; border: 2px solid #ddd;
   flex-shrink: 0;
 }
@@ -97,7 +97,7 @@ body {
       <div class="col-title over"><span>OVERFOCUS</span><span class="df">&Delta;f = &minus;0.5 &mu;m</span></div>
       <div class="ray-wrap"><canvas id="ray-over"></canvas></div>
       <div class="bottom-bar">
-        <canvas id="fresnel-over" width="200" height="200"></canvas>
+        <canvas id="fresnel-over" width="300" height="300"></canvas>
         <div class="bottom-info">
           <div class="fresnel-label">Bright fringe outside edge</div>
           <ul>
@@ -113,7 +113,7 @@ body {
       <div class="col-title focus"><span>IN FOCUS</span><span class="df">&Delta;f = 0</span></div>
       <div class="ray-wrap"><canvas id="ray-focus"></canvas></div>
       <div class="bottom-bar">
-        <canvas id="fresnel-focus" width="200" height="200"></canvas>
+        <canvas id="fresnel-focus" width="300" height="300"></canvas>
         <div class="bottom-info">
           <div class="fresnel-label">No Fresnel fringes</div>
           <ul>
@@ -129,7 +129,7 @@ body {
       <div class="col-title under"><span>UNDERFOCUS</span><span class="df">&Delta;f = +1.0 &mu;m</span></div>
       <div class="ray-wrap"><canvas id="ray-under"></canvas></div>
       <div class="bottom-bar">
-        <canvas id="fresnel-under" width="200" height="200"></canvas>
+        <canvas id="fresnel-under" width="300" height="300"></canvas>
         <div class="bottom-info">
           <div class="fresnel-label">Dark fringe inside edge</div>
           <ul>
@@ -172,15 +172,17 @@ function drawRay(canvasId, state) {
     // Layout — push detector down to use more vertical space
     const specY   = h * 0.06;
     const lensY   = h * 0.30;
-    const bfpBase = h * 0.46;
+    const bfpBase = h * 0.40;
     const detY    = h * 0.68;
     const planeW  = w * 0.42;
     const lensW   = w * 0.40;
     const labelX  = cx + planeW / 2 + 10;
 
-    // Strong visual shift for clear angle difference
-    const scaledShift = um * h * 0.18;
-    const imgPlaneY = detY + Math.max(-h * 0.16, Math.min(h * 0.26, scaledShift));
+    // Hardcoded image plane positions for DRAMATIC angle difference
+    // Overfocus: image plane far ABOVE detector (strong lens converges steeply)
+    // Underfocus: image plane far BELOW detector (weak lens converges shallowly)
+    const imgPlaneMap = { over: detY - h * 0.20, focus: detY, under: detY + h * 0.28 };
+    const imgPlaneY = imgPlaneMap[state];
 
     const isInFocus = state === 'focus';
     const isUnder = state === 'under';
@@ -403,26 +405,33 @@ function drawRay(canvasId, state) {
         labelBg('Detector', labelX, detY + fSM * 0.35, `700 ${fSM}px Inter,sans-serif`, '#333');
     }
 
-    // --- Δf bracket ---
+    // --- Δf dimension line (bracket on left, label separated) ---
     if (!isInFocus) {
         const topY = Math.min(detY, imgPlaneY);
         const botY = Math.max(detY, imgPlaneY);
-        const bx = cx - planeW / 2 - 22;
+        const bracketX = cx - planeW / 2 - 14;  // bracket line
         const midY = (topY + botY) / 2;
 
-        ctx.strokeStyle = stateColor; ctx.lineWidth = 3.5;
-        ctx.beginPath(); ctx.moveTo(bx, topY + 2); ctx.lineTo(bx, botY - 2); ctx.stroke();
+        // Vertical bracket line with end caps
+        ctx.strokeStyle = stateColor; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.moveTo(bracketX, topY); ctx.lineTo(bracketX, botY); ctx.stroke();
+        // Top & bottom horizontal caps
         ctx.beginPath();
-        ctx.moveTo(bx, topY + 2); ctx.lineTo(bx + 10, topY + 2);
-        ctx.moveTo(bx, botY - 2); ctx.lineTo(bx + 10, botY - 2);
+        ctx.moveTo(bracketX, topY); ctx.lineTo(bracketX + 10, topY);
+        ctx.moveTo(bracketX, botY); ctx.lineTo(bracketX + 10, botY);
         ctx.stroke();
+
+        // "Δf" label — clearly to the LEFT of the bracket, never overlapping
+        const labelX2 = bracketX - 8;
         ctx.fillStyle = stateColor;
-        ctx.beginPath(); ctx.moveTo(bx - 6, topY + 14); ctx.lineTo(bx, topY + 1); ctx.lineTo(bx + 6, topY + 14); ctx.closePath(); ctx.fill();
-        ctx.beginPath(); ctx.moveTo(bx - 6, botY - 14); ctx.lineTo(bx, botY - 1); ctx.lineTo(bx + 6, botY - 14); ctx.closePath(); ctx.fill();
+        ctx.font = `900 ${fMD}px Inter,sans-serif`;
+        ctx.textAlign = 'right';
+        // White background behind text for clarity
+        const tm = ctx.measureText('\u0394f');
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+        ctx.fillRect(labelX2 - tm.width - 4, midY - fMD * 0.5, tm.width + 8, fMD * 1.1);
         ctx.fillStyle = stateColor;
-        ctx.font = `900 ${fLG}px Inter,sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.fillText('\u0394f', bx - 2, midY + fLG * 0.35);
+        ctx.fillText('\u0394f', labelX2, midY + fMD * 0.35);
     }
 }
 
@@ -440,15 +449,15 @@ function drawFresnel(canvasId, state) {
     if (state === 'focus') {
         ctx.fillStyle = '#dcdcdc';
         ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = 'rgba(180,180,180,0.3)'; ctx.lineWidth = 1.5;
+        ctx.strokeStyle = 'rgba(180,180,180,0.3)'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
     } else if (state === 'under') {
         ctx.fillStyle = '#d0d0d0';
         ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = 'rgba(25,25,25,0.6)'; ctx.lineWidth = 6;
-        ctx.beginPath(); ctx.arc(cx, cy, R - 3, 0, Math.PI * 2); ctx.stroke();
-        ctx.strokeStyle = 'rgba(40,40,40,0.25)'; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.arc(cx, cy, R - 9, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = 'rgba(25,25,25,0.6)'; ctx.lineWidth = 8;
+        ctx.beginPath(); ctx.arc(cx, cy, R - 4, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = 'rgba(40,40,40,0.25)'; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.arc(cx, cy, R - 12, 0, Math.PI * 2); ctx.stroke();
         const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * 0.55);
         grad.addColorStop(0, 'rgba(255,255,255,0.25)');
         grad.addColorStop(1, 'rgba(255,255,255,0)');
@@ -457,18 +466,18 @@ function drawFresnel(canvasId, state) {
     } else {
         ctx.fillStyle = '#b5b5b5';
         ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 6;
-        ctx.beginPath(); ctx.arc(cx, cy, R + 5, 0, Math.PI * 2); ctx.stroke();
-        ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.arc(cx, cy, R + 12, 0, Math.PI * 2); ctx.stroke();
-        ctx.strokeStyle = 'rgba(50,50,50,0.35)'; ctx.lineWidth = 2.5;
+        ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 8;
+        ctx.beginPath(); ctx.arc(cx, cy, R + 6, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.arc(cx, cy, R + 16, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = 'rgba(50,50,50,0.35)'; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.arc(cx, cy, R - 1, 0, Math.PI * 2); ctx.stroke();
     }
 
-    ctx.fillStyle = '#555'; ctx.font = '700 14px Inter,sans-serif'; ctx.textAlign = 'center';
-    if (state === 'focus') ctx.fillText('No fringes', cx, h - 8);
-    else if (state === 'under') ctx.fillText('Dark fringe inside', cx, h - 8);
-    else ctx.fillText('Bright fringe outside', cx, h - 8);
+    ctx.fillStyle = '#444'; ctx.font = '700 22px Inter,sans-serif'; ctx.textAlign = 'center';
+    if (state === 'focus') ctx.fillText('No fringes', cx, h - 12);
+    else if (state === 'under') ctx.fillText('Dark fringe inside', cx, h - 12);
+    else ctx.fillText('Bright fringe outside', cx, h - 12);
 }
 
 // ====== INIT ======
