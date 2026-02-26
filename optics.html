@@ -41,8 +41,11 @@ body {
 
 /* Left: Ray Diagram */
 .col-ray { grid-column: 1; }
+.ray-wrap {
+    display: flex; flex-direction: column;
+}
 .ray-wrap canvas {
-    display: block; width: 100%; aspect-ratio: 5 / 3;
+    display: block; width: 100%; flex: 1; min-height: 300px;
 }
 #ray-state-badge {
     display: flex; align-items: center; gap: 10px;
@@ -292,26 +295,31 @@ function drawCTF(nm){
 
 // ====== RAY DIAGRAM ======
 function drawRayDiagram(nm) {
-    const c = rayCtx.canvas, w = c.width, h = c.height;
+    const c = rayCtx.canvas;
+    // Dynamic resize: match display size for pixel-perfect rendering
+    const rect = c.getBoundingClientRect();
+    const dw = Math.round(rect.width), dh = Math.round(rect.height);
+    if (c.width !== dw || c.height !== dh) { c.width = dw; c.height = dh; }
+    const w = c.width, h = c.height;
     rayCtx.clearRect(0, 0, w, h);
     const um = nm / 1000;
     const cx = w / 2;
 
     // --- Layout (spread to fill canvas) ---
-    const specY    = h * 0.10;
-    const lensY    = h * 0.32;
-    const bfpBase  = h * 0.48;
-    const detY     = h * 0.70;
-    const planeW   = w * 0.54;
-    const lensW    = w * 0.50;
+    const specY    = h * 0.07;
+    const lensY    = h * 0.27;
+    const bfpBase  = h * 0.47;
+    const detY     = h * 0.74;
+    const planeW   = w * 0.46;
+    const lensW    = w * 0.42;
 
     // BFP shifts with defocus
     const bfpShift = Math.max(-h * 0.04, Math.min(h * 0.04, um * h * 0.04));
     const bfpY = bfpBase + bfpShift;
 
     // Image plane (sqrt-scaled, clamped above badge)
-    const scaledShift = (nm / 1000) * h * 0.12;
-    const imgPlaneY = detY + Math.max(-h * 0.18, Math.min(h * 0.18, scaledShift));
+    const scaledShift = (nm / 1000) * h * 0.10;
+    const imgPlaneY = detY + Math.max(-h * 0.12, Math.min(h * 0.18, scaledShift));
 
     // State
     const isInFocus = Math.abs(um) < 0.01;
@@ -321,11 +329,11 @@ function drawRayDiagram(nm) {
     const stateBg = isOver ? '#fef2f2' : isUnder ? '#eff6ff' : '#ecfdf5';
 
     // Font sizes
-    const fXL = Math.round(h * 0.055);
-    const fLG = Math.round(h * 0.045);
-    const fMD = Math.round(h * 0.038);
-    const fSM = Math.round(h * 0.030);
-    const fXS = Math.round(h * 0.025);
+    const fXL = Math.max(28, Math.round(h * 0.042));
+    const fLG = Math.max(22, Math.round(h * 0.034));
+    const fMD = Math.max(18, Math.round(h * 0.028));
+    const fSM = Math.max(15, Math.round(h * 0.023));
+    const fXS = Math.max(12, Math.round(h * 0.018));
 
     // Helper: draw text with white background (prevents overlap with lines)
     function labelWithBg(text, x, y, font, color, align) {
