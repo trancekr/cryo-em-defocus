@@ -35,14 +35,14 @@ body {
 /* === Main 2-column layout === */
 .main-grid {
     display: grid;
-    grid-template-columns: 1fr 380px;
+    grid-template-columns: 1fr 440px;
     gap: 10px; margin-bottom: 6px;
 }
 
 /* Left: Ray Diagram */
 .col-ray { grid-column: 1; }
 .ray-wrap canvas {
-    display: block; width: 100%; aspect-ratio: 4 / 3;
+    display: block; width: 100%; aspect-ratio: 8 / 5;
 }
 
 /* Right: Side panel */
@@ -116,9 +116,10 @@ body {
 .play-btn:hover { transform: scale(1.08); }
 .slider-wrap { flex: 1; min-width: 140px; }
 .slider-labels {
-    display: flex; justify-content: space-between; font-size: 11px; color: #888;
+    position: relative; height: 18px; font-size: 11px; color: #888;
     margin-bottom: 2px;
 }
+.slider-labels span { position: absolute; top: 0; }
 input[type=range] {
     -webkit-appearance: none; width: 100%; height: 5px;
     background: linear-gradient(to right, #fecaca 0%, #fef2f2 12%, #d1fae5 13.5%, #d1fae5 15.5%, #dbeafe 17%, #bfdbfe 100%);
@@ -156,7 +157,7 @@ input[type=range]::-webkit-slider-thumb {
     <div class="main-grid">
         <div class="col-ray">
             <div class="card ray-wrap">
-                <canvas id="rayCanvas" width="1200" height="900"></canvas>
+                <canvas id="rayCanvas" width="1200" height="750"></canvas>
             </div>
         </div>
 
@@ -196,7 +197,7 @@ input[type=range]::-webkit-slider-thumb {
     <div class="card controls">
         <button class="play-btn" id="play-btn" onclick="togglePlay()">▶</button>
         <div class="slider-wrap">
-            <div class="slider-labels"><span style="color:#dc2626;font-weight:600">◀ Overfocus</span><span style="color:#059669;font-weight:600">In Focus</span><span style="color:#2563eb;font-weight:600">Underfocus ▶</span></div>
+            <div class="slider-labels"><span style="color:#dc2626;font-weight:600;left:0">◀ Overfocus</span><span style="color:#059669;font-weight:600;left:14.3%;transform:translateX(-50%)">In Focus</span><span style="color:#2563eb;font-weight:600;right:0">Underfocus ▶</span></div>
             <input type="range" id="defocus-slider" min="-500" max="3000" step="1" value="0" oninput="onSlider()">
         </div>
         <span class="slider-val" id="slider-label">0.000 μm</span>
@@ -284,12 +285,12 @@ function drawRayDiagram(nm) {
     const cx = w / 2;
 
     // --- Layout (spread to fill canvas) ---
-    const specY    = h * 0.05;
-    const lensY    = h * 0.22;
-    const bfpBase  = h * 0.35;
-    const detY     = h * 0.50;
-    const planeW   = w * 0.58;
-    const lensW    = w * 0.52;
+    const specY    = h * 0.08;
+    const lensY    = h * 0.27;
+    const bfpBase  = h * 0.39;
+    const detY     = h * 0.56;
+    const planeW   = w * 0.54;
+    const lensW    = w * 0.50;
 
     // BFP shifts with defocus
     const bfpShift = Math.max(-h * 0.04, Math.min(h * 0.04, um * h * 0.04));
@@ -298,7 +299,7 @@ function drawRayDiagram(nm) {
     // Image plane (sqrt-scaled, clamped above badge)
     const sign = nm >= 0 ? 1 : -1;
     const scaledShift = sign * Math.sqrt(Math.abs(nm) / 1000) * h * 0.24;
-    const imgPlaneY = detY + Math.max(-h * 0.15, Math.min(h * 0.30, scaledShift));
+    const imgPlaneY = detY + Math.max(-h * 0.12, Math.min(h * 0.25, scaledShift));
 
     // State
     const isInFocus = Math.abs(um) < 0.01;
@@ -354,7 +355,7 @@ function drawRayDiagram(nm) {
 
     // --- Ray colors ---
     const rayColors = ['#dc2626', '#059669', '#2563eb'];
-    const specPts = [-0.22, 0, 0.22];
+    const specPts = [-0.14, 0, 0.14];
 
     // --- Beam (subtle strip + small arrows, label on right) ---
     rayCtx.fillStyle = 'rgba(100,130,180,0.05)';
@@ -392,8 +393,8 @@ function drawRayDiagram(nm) {
         `600 ${fSM}px Inter,sans-serif`, '#333', 'left');
 
     // --- Objective Lens (horizontal biconvex — standard optics symbol) ---
-    const lensBodyW = lensW * 0.50;
-    const lensBodyH = h * 0.030;
+    const lensBodyW = lensW * 0.55;
+    const lensBodyH = h * 0.035;
     // Fill
     rayCtx.fillStyle = 'rgba(130,180,240,0.25)';
     rayCtx.beginPath();
@@ -439,17 +440,18 @@ function drawRayDiagram(nm) {
     // --- Colored rays: 2 marginal + 1 chief per specimen point ---
     for (let i = 0; i < specPts.length; i++) {
         const sx = cx + specPts[i] * planeW;
-        const ix = cx - specPts[i] * planeW * 0.8; // inverted image position
         const color = rayColors[i];
         const targetY = isInFocus ? detY : imgPlaneY;
+        const mag = (targetY - lensY) / (lensY - specY);
+        const ix = cx - specPts[i] * planeW * mag;
 
         // Collect detector crossing X values for disk-of-confusion bar
         const detCrossXs = [];
 
         // ── Two marginal rays ──
-        const lensHitFracs = [-0.4, 0.4];
+        const lensHitFracs = [-0.45, 0.45];
         for (const frac of lensHitFracs) {
-            const lensHitX = cx + frac * lensW * 0.45;
+            const lensHitX = cx + frac * lensW * 0.48;
             // Part 1: Specimen → Lens (diverging)
             rayCtx.strokeStyle = color;
             rayCtx.lineWidth = 2;
@@ -486,23 +488,34 @@ function drawRayDiagram(nm) {
             }
         }
 
-        // ── Chief ray (through lens center, undeviated) ──
+        // ── Chief ray (through lens center → image point, physically correct) ──
         rayCtx.strokeStyle = color;
-        rayCtx.lineWidth = 1.2;
-        rayCtx.globalAlpha = 0.35;
+        rayCtx.lineWidth = 1.5;
+        rayCtx.globalAlpha = 0.4;
         rayCtx.beginPath();
         rayCtx.moveTo(sx, specY + 3);
         rayCtx.lineTo(cx, lensY);
         rayCtx.stroke();
-        // Chief ray continues straight after lens center
-        const chiefDx = cx - sx;
-        const chiefDy = lensY - specY;
-        const chiefExtY = Math.max(targetY, detY) + 10;
-        const chiefExtX = cx + chiefDx * ((chiefExtY - lensY) / chiefDy);
         rayCtx.beginPath();
         rayCtx.moveTo(cx, lensY);
-        rayCtx.lineTo(chiefExtX, chiefExtY);
+        rayCtx.lineTo(ix, targetY);
         rayCtx.stroke();
+        if (!isInFocus && Math.abs(targetY - detY) > 8) {
+            const chiefT = (detY - lensY) / (targetY - lensY);
+            const chiefDetX = cx + (ix - cx) * chiefT;
+            rayCtx.globalAlpha = 0.15;
+            rayCtx.setLineDash([4, 4]);
+            rayCtx.beginPath();
+            if (isUnder) {
+                rayCtx.moveTo(chiefDetX, detY);
+                rayCtx.lineTo(ix, targetY);
+            } else {
+                rayCtx.moveTo(ix, targetY);
+                rayCtx.lineTo(chiefDetX, detY);
+            }
+            rayCtx.stroke();
+            rayCtx.setLineDash([]);
+        }
         rayCtx.globalAlpha = 1.0;
 
         // ── Disk of confusion bar at detector (replaces small dots) ──
@@ -651,7 +664,7 @@ function drawRayDiagram(nm) {
 
     rayCtx.font = `800 ${fXL}px Inter,sans-serif`;
     const tw = rayCtx.measureText(stateText).width + 50;
-    const badgeY = h * 0.88;
+    const badgeY = h * 0.86;
     // Badge background
     rayCtx.fillStyle = stateBg;
     rayCtx.strokeStyle = stateColor;
