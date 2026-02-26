@@ -235,24 +235,25 @@ function drawRay(canvasId, state) {
     const rayColors = ['#dc2626', '#059669', '#2563eb'];
     const specPts = [-0.18, 0, 0.18];
 
-    // --- Electron Beam ---
+    // --- Electron Beam (covers full specimen width, 5 arrows) ---
     const beamTop = 1;
+    const beamHalfW = planeW / 2;
     const beamGrad = ctx.createLinearGradient(0, beamTop, 0, specY);
     beamGrad.addColorStop(0, 'rgba(80,110,170,0.15)');
     beamGrad.addColorStop(1, 'rgba(80,110,170,0.03)');
     ctx.fillStyle = beamGrad;
-    ctx.fillRect(cx - planeW * 0.12, beamTop, planeW * 0.24, specY - beamTop);
-    ctx.strokeStyle = '#999'; ctx.lineWidth = 2;
-    for (const frac of [-0.035, 0, 0.035]) {
-        const bx = cx + frac * planeW;
+    ctx.fillRect(cx - beamHalfW, beamTop, beamHalfW * 2, specY - beamTop);
+    ctx.strokeStyle = '#999'; ctx.lineWidth = 1.5;
+    for (const frac of [-0.4, -0.2, 0, 0.2, 0.4]) {
+        const bx = cx + frac * beamHalfW;
         ctx.beginPath(); ctx.moveTo(bx, beamTop + 1); ctx.lineTo(bx, specY - 6); ctx.stroke();
         ctx.fillStyle = '#888';
         ctx.beginPath();
-        ctx.moveTo(bx - 4, specY - 10); ctx.lineTo(bx, specY - 1); ctx.lineTo(bx + 4, specY - 10);
+        ctx.moveTo(bx - 3, specY - 9); ctx.lineTo(bx, specY - 1); ctx.lineTo(bx + 3, specY - 9);
         ctx.fill();
     }
     ctx.fillStyle = '#555'; ctx.font = `700 ${fMD}px Inter,sans-serif`; ctx.textAlign = 'left';
-    ctx.fillText('e\u207B', cx + planeW * 0.08, specY * 0.6);
+    ctx.fillText('e\u207B', cx + beamHalfW + 6, specY * 0.55);
 
     // --- Specimen ---
     ctx.strokeStyle = '#222'; ctx.lineWidth = 3.5;
