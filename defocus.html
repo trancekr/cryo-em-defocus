@@ -74,14 +74,7 @@ body {
 .canvas-wrap { flex: 1; min-height: 0; padding: 4px; position: relative; }
 .canvas-wrap canvas { display: block; width: 100%; height: 100%; }
 
-/* Defocus badge */
-#defocus-badge {
-  text-align: center; padding: clamp(4px, 0.6vh, 8px);
-  font-size: clamp(14px, 1.6vh, 20px); font-weight: 700; color: #6d28d9;
-  border-top: 1px solid #eee;
-  font-variant-numeric: tabular-nums;
-  background: #faf8ff;
-}
+/* Defocus badge removed — overlaid on canvas via JS */
 
 /* Profile area */
 .profile-area {
@@ -241,7 +234,6 @@ input[type=range]::-webkit-slider-thumb {
         <div class="col-title img">IMAGE</div>
         <div class="canvas-area">
           <div class="canvas-wrap"><canvas id="imgCanvas"></canvas></div>
-          <div id="defocus-badge">Defocus: 0.000 &mu;m</div>
           <div class="profile-area">
             <canvas id="imgProfile"></canvas>
             <div class="axis">Intensity profile (horizontal midline)</div>
@@ -439,14 +431,22 @@ function drawImage(nm) {
     // Midline
     ctx.strokeStyle = 'rgba(109,40,217,0.4)'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(ox, oy + size / 2); ctx.lineTo(ox + size, oy + size / 2); ctx.stroke();
-    // Badge
+    // Defocus overlay text on canvas
     const um = nm / 1000;
-    let l = `Defocus: ${um.toFixed(3)} \u03bcm`;
-    if (Math.abs(um) < 0.001) l += '';
+    let l = `\u0394f = ${um.toFixed(3)} \u03bcm`;
+    if (Math.abs(um) < 0.001) l = '\u0394f = 0 (in focus)';
     else if (Math.abs(um - 0.088) < 0.005) l += ' (Scherzer)';
-    else if (um > 0.01) l += ' underfocus';
-    else if (um < -0.01) l += ' overfocus';
-    document.getElementById('defocus-badge').textContent = l;
+    else if (um > 0.01) l += ' under';
+    else if (um < -0.01) l += ' over';
+    const fOvr = Math.round(Math.max(13, w * 0.042));
+    ctx.font = `800 ${fOvr}px Inter,sans-serif`;
+    ctx.textAlign = 'center';
+    const tw = ctx.measureText(l).width;
+    const tx = w / 2, ty = oy + size - fOvr * 0.6;
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(tx - tw / 2 - 6, ty - fOvr * 0.85, tw + 12, fOvr * 1.2);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(l, tx, ty);
 }
 
 // ====== DRAW PROFILE ======
