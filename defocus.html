@@ -495,7 +495,8 @@ function drawProfile(canvasId, data, yMid, color, yRange) {
 function drawCTF(nm) {
     const { ctx, w, h } = initCanvas('ctfCanvas');
     const dA = nm * 10;
-    const m = { l: w * 0.03, r: w * 0.01, t: h * 0.08, b: h * 0.12 };
+    const fLabel = Math.round(Math.max(9, h * 0.16));
+    const m = { l: fLabel * 2.2, r: w * 0.01, t: fLabel * 0.8, b: fLabel * 1.4 };
     const pw = w - m.l - m.r, ph = h - m.t - m.b, sMax = 0.35;
 
     // Grid
@@ -521,14 +522,16 @@ function drawCTF(nm) {
     }
     ctx.stroke();
 
-    // Axis labels
-    const fLabel = Math.round(Math.max(9, h * 0.14));
-    ctx.fillStyle = '#aaa'; ctx.font = `600 ${fLabel}px Inter,sans-serif`;
+    // Y-axis labels (+1, -1) — right-aligned before plot area
+    ctx.fillStyle = '#999'; ctx.font = `700 ${fLabel}px Inter,sans-serif`;
+    ctx.textAlign = 'right';
+    ctx.fillText('+1', m.l - 4, m.t + fLabel * 0.35);
+    ctx.fillText('\u20131', m.l - 4, m.t + ph + fLabel * 0.35);
+    // X-axis labels (0, 0.35) — below plot area, inside bottom margin
     ctx.textAlign = 'left';
-    ctx.fillText('+1', m.l + 2, m.t + fLabel * 0.4);
-    ctx.fillText('\u20131', m.l + 2, m.t + ph + 1);
-    ctx.textAlign = 'left'; ctx.fillText('0', m.l, m.t + ph + fLabel + 2);
-    ctx.textAlign = 'right'; ctx.fillText(sMax.toFixed(2), m.l + pw, m.t + ph + fLabel + 2);
+    ctx.fillText('0', m.l, m.t + ph + fLabel * 1.1);
+    ctx.textAlign = 'right';
+    ctx.fillText(sMax.toFixed(2), m.l + pw, m.t + ph + fLabel * 1.1);
 }
 
 // ====== INFO PANEL ======
