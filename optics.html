@@ -13,7 +13,7 @@ body {
     color: #1a1a2e; min-height: 100vh;
     display: flex; justify-content: center; padding: 8px;
 }
-#app { max-width: 1500px; width: 100%; }
+#app { max-width: 1200px; width: 100%; }
 
 .header { text-align: center; margin-bottom: 8px; }
 .header h1 {
@@ -35,14 +35,14 @@ body {
 /* === Main 2-column layout === */
 .main-grid {
     display: grid;
-    grid-template-columns: 1fr 440px;
+    grid-template-columns: 1fr 520px;
     gap: 10px; margin-bottom: 6px;
 }
 
 /* Left: Ray Diagram */
 .col-ray { grid-column: 1; }
 .ray-wrap canvas {
-    display: block; width: 100%; aspect-ratio: 8 / 5;
+    display: block; width: 100%; aspect-ratio: 5 / 4;
 }
 
 /* Right: Side panel */
@@ -122,7 +122,7 @@ body {
 .slider-labels span { position: absolute; top: 0; }
 input[type=range] {
     -webkit-appearance: none; width: 100%; height: 5px;
-    background: linear-gradient(to right, #fecaca 0%, #fef2f2 12%, #d1fae5 13.5%, #d1fae5 15.5%, #dbeafe 17%, #bfdbfe 100%);
+    background: linear-gradient(to right, #fecaca 0%, #fef2f2 37%, #d1fae5 39%, #d1fae5 41%, #dbeafe 43%, #bfdbfe 100%);
     border-radius: 3px; outline: none;
 }
 input[type=range]::-webkit-slider-thumb {
@@ -157,7 +157,7 @@ input[type=range]::-webkit-slider-thumb {
     <div class="main-grid">
         <div class="col-ray">
             <div class="card ray-wrap">
-                <canvas id="rayCanvas" width="1200" height="750"></canvas>
+                <canvas id="rayCanvas" width="1000" height="800"></canvas>
             </div>
         </div>
 
@@ -197,8 +197,8 @@ input[type=range]::-webkit-slider-thumb {
     <div class="card controls">
         <button class="play-btn" id="play-btn" onclick="togglePlay()">▶</button>
         <div class="slider-wrap">
-            <div class="slider-labels"><span style="color:#dc2626;font-weight:600;left:0">◀ Overfocus</span><span style="color:#059669;font-weight:600;left:14.3%;transform:translateX(-50%)">In Focus</span><span style="color:#2563eb;font-weight:600;right:0">Underfocus ▶</span></div>
-            <input type="range" id="defocus-slider" min="-500" max="3000" step="1" value="0" oninput="onSlider()">
+            <div class="slider-labels"><span style="color:#dc2626;font-weight:600;left:0">◀ Overfocus</span><span style="color:#059669;font-weight:600;left:40%;transform:translateX(-50%)">In Focus</span><span style="color:#2563eb;font-weight:600;right:0">Underfocus ▶</span></div>
+            <input type="range" id="defocus-slider" min="-1000" max="1500" step="1" value="0" oninput="onSlider()">
         </div>
         <span class="slider-val" id="slider-label">0.000 μm</span>
         <div class="presets">
@@ -285,10 +285,10 @@ function drawRayDiagram(nm) {
     const cx = w / 2;
 
     // --- Layout (spread to fill canvas) ---
-    const specY    = h * 0.08;
-    const lensY    = h * 0.27;
-    const bfpBase  = h * 0.39;
-    const detY     = h * 0.56;
+    const specY    = h * 0.10;
+    const lensY    = h * 0.30;
+    const bfpBase  = h * 0.44;
+    const detY     = h * 0.64;
     const planeW   = w * 0.54;
     const lensW    = w * 0.50;
 
@@ -297,9 +297,8 @@ function drawRayDiagram(nm) {
     const bfpY = bfpBase + bfpShift;
 
     // Image plane (sqrt-scaled, clamped above badge)
-    const sign = nm >= 0 ? 1 : -1;
-    const scaledShift = sign * Math.sqrt(Math.abs(nm) / 1000) * h * 0.24;
-    const imgPlaneY = detY + Math.max(-h * 0.12, Math.min(h * 0.25, scaledShift));
+    const scaledShift = (nm / 1000) * h * 0.12;
+    const imgPlaneY = detY + Math.max(-h * 0.18, Math.min(h * 0.18, scaledShift));
 
     // State
     const isInFocus = Math.abs(um) < 0.01;
@@ -664,7 +663,7 @@ function drawRayDiagram(nm) {
 
     rayCtx.font = `800 ${fXL}px Inter,sans-serif`;
     const tw = rayCtx.measureText(stateText).width + 50;
-    const badgeY = h * 0.86;
+    const badgeY = h * 0.88;
     // Badge background
     rayCtx.fillStyle = stateBg;
     rayCtx.strokeStyle = stateColor;
@@ -761,7 +760,7 @@ let playing=false,animId=null,cur=0;
 function onSlider(){cur=parseFloat(document.getElementById('defocus-slider').value);document.getElementById('slider-label').textContent=(cur/1000).toFixed(3)+' μm';update(cur);}
 function setDefocus(nm){cur=nm;document.getElementById('defocus-slider').value=nm;document.getElementById('slider-label').textContent=(nm/1000).toFixed(3)+' μm';update(nm);}
 function togglePlay(){playing=!playing;document.getElementById('play-btn').textContent=playing?'⏸':'▶';if(playing)animate();else if(animId){cancelAnimationFrame(animId);animId=null;}}
-function animate(){if(!playing)return;cur+=4;if(cur>1500)cur=-500;document.getElementById('defocus-slider').value=cur;document.getElementById('slider-label').textContent=(cur/1000).toFixed(3)+' μm';update(cur);animId=requestAnimationFrame(animate);}
+function animate(){if(!playing)return;cur+=4;if(cur>1500)cur=-1000;document.getElementById('defocus-slider').value=cur;document.getElementById('slider-label').textContent=(cur/1000).toFixed(3)+' μm';update(cur);animId=requestAnimationFrame(animate);}
 
 // ====== INIT ======
 drawObject();
