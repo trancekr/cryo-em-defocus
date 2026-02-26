@@ -285,7 +285,7 @@ function drawRayDiagram(nm) {
     const cx = w / 2;
 
     // --- Layout (spread to fill canvas) ---
-    const specY    = h * 0.10;
+    const specY    = h * 0.13;
     const lensY    = h * 0.30;
     const bfpBase  = h * 0.44;
     const detY     = h * 0.64;
@@ -308,11 +308,11 @@ function drawRayDiagram(nm) {
     const stateBg = isOver ? '#fef2f2' : isUnder ? '#eff6ff' : '#ecfdf5';
 
     // Font sizes
-    const fXL = Math.round(h * 0.032);
-    const fLG = Math.round(h * 0.026);
-    const fMD = Math.round(h * 0.022);
-    const fSM = Math.round(h * 0.018);
-    const fXS = Math.round(h * 0.015);
+    const fXL = Math.round(h * 0.044);
+    const fLG = Math.round(h * 0.036);
+    const fMD = Math.round(h * 0.030);
+    const fSM = Math.round(h * 0.025);
+    const fXS = Math.round(h * 0.020);
 
     // Helper: draw text with white background (prevents overlap with lines)
     function labelWithBg(text, x, y, font, color, align) {
@@ -358,13 +358,13 @@ function drawRayDiagram(nm) {
 
     // --- Beam (subtle strip + small arrows, label on right) ---
     rayCtx.fillStyle = 'rgba(100,130,180,0.05)';
-    rayCtx.fillRect(cx - planeW * 0.18, 0, planeW * 0.36, specY);
+    rayCtx.fillRect(cx - planeW * 0.18, h * 0.02, planeW * 0.36, specY - h * 0.02);
     rayCtx.strokeStyle = '#bbb';
     rayCtx.lineWidth = 1;
     for (const frac of [-0.06, 0, 0.06]) {
         const bx = cx + frac * planeW;
         rayCtx.beginPath();
-        rayCtx.moveTo(bx, 0); rayCtx.lineTo(bx, specY - 6); rayCtx.stroke();
+        rayCtx.moveTo(bx, h * 0.02); rayCtx.lineTo(bx, specY - 6); rayCtx.stroke();
         rayCtx.fillStyle = '#bbb';
         rayCtx.beginPath();
         rayCtx.moveTo(bx - 3, specY - 9); rayCtx.lineTo(bx, specY - 2);
@@ -377,7 +377,7 @@ function drawRayDiagram(nm) {
 
     // --- Specimen ---
     rayCtx.strokeStyle = '#222';
-    rayCtx.lineWidth = 3;
+    rayCtx.lineWidth = 4;
     rayCtx.beginPath();
     rayCtx.moveTo(cx - planeW/2, specY);
     rayCtx.lineTo(cx + planeW/2, specY);
@@ -385,15 +385,15 @@ function drawRayDiagram(nm) {
     for (let i = 0; i < specPts.length; i++) {
         rayCtx.fillStyle = rayColors[i];
         rayCtx.beginPath();
-        rayCtx.arc(cx + specPts[i] * planeW, specY, 6, 0, Math.PI * 2);
+        rayCtx.arc(cx + specPts[i] * planeW, specY, 8, 0, Math.PI * 2);
         rayCtx.fill();
     }
-    labelWithBg('Specimen', cx + planeW * 0.42, specY + fSM * 0.4,
+    labelWithBg('Specimen', cx + planeW / 2 + fSM * 0.5, specY + fSM * 0.4,
         `600 ${fSM}px Inter,sans-serif`, '#333', 'left');
 
     // --- Objective Lens (horizontal biconvex — standard optics symbol) ---
-    const lensBodyW = lensW * 0.55;
-    const lensBodyH = h * 0.035;
+    const lensBodyW = lensW * 0.60;
+    const lensBodyH = h * 0.045;
     // Fill
     rayCtx.fillStyle = 'rgba(130,180,240,0.25)';
     rayCtx.beginPath();
@@ -404,7 +404,7 @@ function drawRayDiagram(nm) {
     rayCtx.fill();
     // Outline
     rayCtx.strokeStyle = '#333';
-    rayCtx.lineWidth = 2.5;
+    rayCtx.lineWidth = 3.5;
     rayCtx.beginPath();
     rayCtx.moveTo(cx - lensBodyW/2, lensY);
     rayCtx.quadraticCurveTo(cx, lensY - lensBodyH, cx + lensBodyW/2, lensY);
@@ -414,14 +414,14 @@ function drawRayDiagram(nm) {
     rayCtx.quadraticCurveTo(cx, lensY + lensBodyH, cx - lensBodyW/2, lensY);
     rayCtx.stroke();
     // Arms (horizontal lines from lens edges outward)
-    rayCtx.lineWidth = 2;
+    rayCtx.lineWidth = 3;
     rayCtx.beginPath();
     rayCtx.moveTo(cx - lensBodyW/2, lensY); rayCtx.lineTo(cx - lensW/2, lensY);
     rayCtx.moveTo(cx + lensBodyW/2, lensY); rayCtx.lineTo(cx + lensW/2, lensY);
     rayCtx.stroke();
     // Converging arrows at top & bottom of lens body
     rayCtx.fillStyle = '#333';
-    const aw = 6, ah = 9;
+    const aw = 8, ah = 12;
     rayCtx.beginPath();
     rayCtx.moveTo(cx - aw, lensY - lensBodyH - ah);
     rayCtx.lineTo(cx, lensY - lensBodyH);
@@ -433,7 +433,7 @@ function drawRayDiagram(nm) {
     rayCtx.lineTo(cx + aw, lensY + lensBodyH + ah);
     rayCtx.closePath(); rayCtx.fill();
     // Label
-    labelWithBg('Objective Lens', cx + planeW * 0.42, lensY + fMD * 0.35,
+    labelWithBg('Objective Lens', cx + planeW / 2 + fSM * 0.5, lensY + fMD * 0.35,
         `700 ${fMD}px Inter,sans-serif`, '#333', 'left');
 
     // --- Colored rays: 2 marginal + 1 chief per specimen point ---
@@ -453,7 +453,7 @@ function drawRayDiagram(nm) {
             const lensHitX = cx + frac * lensW * 0.48;
             // Part 1: Specimen → Lens (diverging)
             rayCtx.strokeStyle = color;
-            rayCtx.lineWidth = 2;
+            rayCtx.lineWidth = 2.5;
             rayCtx.globalAlpha = 0.7;
             rayCtx.beginPath();
             rayCtx.moveTo(sx, specY + 3);
@@ -489,7 +489,7 @@ function drawRayDiagram(nm) {
 
         // ── Chief ray (through lens center → image point, physically correct) ──
         rayCtx.strokeStyle = color;
-        rayCtx.lineWidth = 1.5;
+        rayCtx.lineWidth = 2;
         rayCtx.globalAlpha = 0.4;
         rayCtx.beginPath();
         rayCtx.moveTo(sx, specY + 3);
@@ -540,14 +540,14 @@ function drawRayDiagram(nm) {
             rayCtx.globalAlpha = 0.95;
             rayCtx.fillStyle = color;
             rayCtx.beginPath();
-            rayCtx.arc(ix, detY, 6, 0, Math.PI * 2);
+            rayCtx.arc(ix, detY, 8, 0, Math.PI * 2);
             rayCtx.fill();
             // Small highlight ring
             rayCtx.strokeStyle = color;
-            rayCtx.lineWidth = 1.5;
+            rayCtx.lineWidth = 2;
             rayCtx.globalAlpha = 0.3;
             rayCtx.beginPath();
-            rayCtx.arc(ix, detY, 11, 0, Math.PI * 2);
+            rayCtx.arc(ix, detY, 14, 0, Math.PI * 2);
             rayCtx.stroke();
             rayCtx.globalAlpha = 1.0;
         } else {
@@ -562,8 +562,8 @@ function drawRayDiagram(nm) {
 
     // --- Back Focal Plane (BFP) ---
     // Reference BFP (always visible, light gray)
-    rayCtx.strokeStyle = '#ddd';
-    rayCtx.lineWidth = 1;
+    rayCtx.strokeStyle = '#aaa';
+    rayCtx.lineWidth = 2;
     rayCtx.setLineDash([6, 4]);
     rayCtx.beginPath();
     rayCtx.moveTo(cx - planeW * 0.36, bfpBase);
@@ -571,12 +571,12 @@ function drawRayDiagram(nm) {
     rayCtx.stroke();
     rayCtx.setLineDash([]);
     if (isInFocus) {
-        labelWithBg('Back Focal Plane (f)', cx + planeW * 0.38, bfpBase + fSM * 0.4,
+        labelWithBg('Back Focal Plane (f)', cx + planeW * 0.36 + fSM, bfpBase + fSM * 0.4,
             `500 ${fSM}px Inter,sans-serif`, '#888', 'left');
     } else {
         // Colored shifted BFP
         rayCtx.strokeStyle = stateColor;
-        rayCtx.lineWidth = 2;
+        rayCtx.lineWidth = 3;
         rayCtx.globalAlpha = 0.7;
         rayCtx.setLineDash([8, 5]);
         rayCtx.beginPath();
@@ -586,7 +586,7 @@ function drawRayDiagram(nm) {
         rayCtx.setLineDash([]);
         rayCtx.globalAlpha = 1.0;
         const bfpLabel = isUnder ? 'BFP (f↑)' : 'BFP (f↓)';
-        labelWithBg(bfpLabel, cx + planeW * 0.38, bfpY + fSM * 0.4,
+        labelWithBg(bfpLabel, cx + planeW * 0.36 + fSM, bfpY + fSM * 0.4,
             `600 ${fSM}px Inter,sans-serif`, stateColor, 'left');
     }
 
@@ -600,13 +600,13 @@ function drawRayDiagram(nm) {
         rayCtx.lineTo(cx + planeW * 0.4, imgPlaneY);
         rayCtx.stroke();
         rayCtx.setLineDash([]);
-        labelWithBg('Image Plane', cx + planeW * 0.42, imgPlaneY + fSM * 0.4,
+        labelWithBg('Image Plane', cx + planeW / 2 + fSM * 0.5, imgPlaneY + fSM * 0.4,
             `600 ${fSM}px Inter,sans-serif`, stateColor, 'left');
     }
 
     // --- Detector / Recording plane (fixed) ---
     rayCtx.strokeStyle = '#222';
-    rayCtx.lineWidth = 3;
+    rayCtx.lineWidth = 4;
     rayCtx.beginPath();
     rayCtx.moveTo(cx - planeW/2, detY);
     rayCtx.lineTo(cx + planeW/2, detY);
@@ -614,7 +614,7 @@ function drawRayDiagram(nm) {
 
     // Detector icon (small camera)
     rayCtx.fillStyle = '#444';
-    const camX = cx - planeW/2 - 50;
+    const camX = cx - planeW/2 + 10;
     const camW = 36, camH = 24;
     rayCtx.fillRect(camX, detY - camH/2, camW, camH);
     rayCtx.fillStyle = '#888';
@@ -622,12 +622,12 @@ function drawRayDiagram(nm) {
     rayCtx.arc(camX + camW/2, detY, 8, 0, Math.PI * 2);
     rayCtx.fill();
     const detLabel = isInFocus ? 'Detector = Image Plane' : 'Detector';
-    labelWithBg(detLabel, cx + planeW * 0.42, detY + fSM * 0.4,
+    labelWithBg(detLabel, cx + planeW / 2 + fSM * 0.5, detY + fSM * 0.4,
         `600 ${fSM}px Inter,sans-serif`, '#333', 'left');
 
     // --- Δf arrow (inward-pointing, no overflow) ---
     if (!isInFocus) {
-        const arrowX = cx - planeW * 0.44;
+        const arrowX = cx - planeW / 2 - fSM;
         const topEnd = Math.min(detY, imgPlaneY);
         const botEnd = Math.max(detY, imgPlaneY);
         rayCtx.strokeStyle = stateColor;
@@ -663,7 +663,8 @@ function drawRayDiagram(nm) {
 
     rayCtx.font = `800 ${fXL}px Inter,sans-serif`;
     const tw = rayCtx.measureText(stateText).width + 50;
-    const badgeY = h * 0.88;
+    const badgeBase = Math.max(detY, imgPlaneY);
+    const badgeY = Math.min(h - 95, badgeBase + h * 0.10);
     // Badge background
     rayCtx.fillStyle = stateBg;
     rayCtx.strokeStyle = stateColor;
@@ -760,7 +761,7 @@ let playing=false,animId=null,cur=0;
 function onSlider(){cur=parseFloat(document.getElementById('defocus-slider').value);document.getElementById('slider-label').textContent=(cur/1000).toFixed(3)+' μm';update(cur);}
 function setDefocus(nm){cur=nm;document.getElementById('defocus-slider').value=nm;document.getElementById('slider-label').textContent=(nm/1000).toFixed(3)+' μm';update(nm);}
 function togglePlay(){playing=!playing;document.getElementById('play-btn').textContent=playing?'⏸':'▶';if(playing)animate();else if(animId){cancelAnimationFrame(animId);animId=null;}}
-function animate(){if(!playing)return;cur+=4;if(cur>1500)cur=-1000;document.getElementById('defocus-slider').value=cur;document.getElementById('slider-label').textContent=(cur/1000).toFixed(3)+' μm';update(cur);animId=requestAnimationFrame(animate);}
+function animate(){if(!playing)return;var prev=cur;cur+=4;if(cur>1500)cur=-1000;if(prev<0&&cur>=0){cur=0;document.getElementById('defocus-slider').value=0;document.getElementById('slider-label').textContent='0.000 μm';update(0);setTimeout(function(){if(playing){cur=4;animId=requestAnimationFrame(animate);}},1500);return;}document.getElementById('defocus-slider').value=cur;document.getElementById('slider-label').textContent=(cur/1000).toFixed(3)+' μm';update(cur);animId=requestAnimationFrame(animate);}
 
 // ====== INIT ======
 drawObject();
