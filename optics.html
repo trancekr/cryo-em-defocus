@@ -94,6 +94,12 @@ body {
 .bottom-info ul { padding-left: 18px; margin: 0; }
 .bottom-info li { font-size: clamp(14px, 1.6vh, 20px); color: #444; line-height: 1.55; font-weight: 500; }
 .bottom-info .key { font-weight: 800; color: #1a1a2e; }
+
+/* Mobile / narrow screens: preserve full layout, allow scroll + zoom */
+@media (max-width: 960px) {
+  body { height: auto; min-height: 100vh; overflow: auto; }
+  #app { min-width: 960px; height: auto; min-height: 100vh; }
+}
 </style>
 </head>
 <body>

@@ -216,6 +216,12 @@ input[type=range]::-webkit-slider-thumb {
 }
 .pill:hover { background: #f5f3ff; color: #7c3aed; border-color: #c4b5fd; }
 .pill.active { background: #f5f3ff; color: #6d28d9; border-color: #7c3aed; font-weight: 800; }
+
+/* Mobile / narrow screens: preserve full layout, allow scroll + zoom */
+@media (max-width: 960px) {
+  body { height: auto; min-height: 100vh; overflow: auto; }
+  #app { min-width: 960px; height: auto; min-height: 100vh; }
+}
 </style>
 </head>
 <body>
