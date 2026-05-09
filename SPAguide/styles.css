@@ -4,11 +4,61 @@
    Scale factor: 1.5x
    ============================================================ */
 
+/* ============================================================
+   THEME TOKENS — chrome only (slide content colors unchanged)
+   Tokens inspired by designdotmd.directory schema.
+   ============================================================ */
+html[data-theme="brandlogy"] {
+  --theme-outer-bg: #000000;
+  --theme-surface: #ffffff;
+  --theme-accent: #e74c3c;
+  --theme-ink: #1a1a2e;
+  --theme-muted: #666666;
+  --theme-soft-muted: #bbbbbb;
+  --theme-nav-bg: rgba(26, 26, 46, 0.85);
+  --theme-body-font: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --theme-heading-font: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+html[data-theme="science-journal"] {
+  --theme-outer-bg: #121213;
+  --theme-surface: #FAF9F5;
+  --theme-accent: #1A4B8C;
+  --theme-ink: #121213;
+  --theme-muted: #606368;
+  --theme-soft-muted: #9a9a9a;
+  --theme-nav-bg: rgba(18, 18, 19, 0.85);
+  --theme-body-font: 'Source Serif 4', 'Pretendard', Georgia, serif;
+  --theme-heading-font: 'Source Serif 4', 'Pretendard', Georgia, serif;
+}
+html[data-theme="museum-plaque"] {
+  --theme-outer-bg: #14130F;
+  --theme-surface: #FBF8EF;
+  --theme-accent: #3F3A33;
+  --theme-ink: #14130F;
+  --theme-muted: #72706A;
+  --theme-soft-muted: #a29e95;
+  --theme-nav-bg: rgba(20, 19, 15, 0.85);
+  --theme-body-font: 'Source Serif 4', 'Pretendard', Georgia, serif;
+  --theme-heading-font: 'Bodoni Moda', 'Source Serif 4', Georgia, serif;
+}
+/* Fallback: if no data-theme on <html>, behave like brandlogy */
+:root {
+  --theme-outer-bg: #000000;
+  --theme-surface: #ffffff;
+  --theme-accent: #e74c3c;
+  --theme-ink: #1a1a2e;
+  --theme-muted: #666666;
+  --theme-soft-muted: #bbbbbb;
+  --theme-nav-bg: rgba(26, 26, 46, 0.85);
+  --theme-body-font: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --theme-heading-font: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
 /* --- Reset & Base --- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html {
-  background: #000000;
+  background: var(--theme-outer-bg);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -19,7 +69,7 @@ body {
   width: 1920px;
   height: 1080px;
   overflow: hidden;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--theme-body-font);
   -webkit-font-smoothing: antialiased;
   zoom: 1;
 }
@@ -51,7 +101,7 @@ body {
   width: 1920px;
   height: 1080px;
   position: relative;
-  background: #ffffff;
+  background: var(--theme-surface);
   overflow: hidden;
   display: none;
 }
@@ -70,7 +120,7 @@ body {
 .bl-chapter {
   font-size: var(--fs-chapter);
   font-weight: 600;
-  color: #e74c3c;
+  color: var(--theme-accent);
   letter-spacing: 1.5px;
   text-transform: uppercase;
   margin-bottom: 24px;
@@ -79,7 +129,8 @@ body {
 .bl-title {
   font-size: var(--fs-title);
   font-weight: 800;
-  color: #1a1a2e;
+  color: var(--theme-ink);
+  font-family: var(--theme-heading-font);
   line-height: 1.2;
   margin-bottom: 10px;
 }
@@ -87,7 +138,7 @@ body {
 .bl-subtitle {
   font-size: var(--fs-subtitle);
   font-weight: 400;
-  color: #666;
+  color: var(--theme-muted);
   line-height: 1.4;
 }
 
@@ -107,7 +158,7 @@ body {
   left: var(--bl-margin-x);
   right: var(--bl-margin-x);
   font-size: var(--fs-ref);
-  color: #bbb;
+  color: var(--theme-soft-muted);
   text-align: center;
 }
 .bl-ref a { color: inherit; text-decoration: none; }
@@ -1120,12 +1171,29 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: rgba(26,26,46,0.85);
+  background: var(--theme-nav-bg);
   backdrop-filter: blur(10px);
   padding: 8px 20px;
   border-radius: 30px;
   z-index: 100;
 }
+
+/* --- Theme Switcher button in nav --- */
+.bl-nav .theme-btn {
+  background: none;
+  border: 1px solid rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.7);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.bl-nav .theme-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
 .bl-nav button {
   background: none;
   border: 2px solid rgba(255,255,255,0.3);
